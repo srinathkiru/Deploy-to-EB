@@ -117,8 +117,8 @@ resource "aws_elastic_beanstalk_environment" "env" {
 
   # AL2023 Docker: pass image via IMAGE_URI env var
   setting {
-    namespace = "aws:elasticbeanstalk:application:environment"
-    name      = "ImageUri"
+    namespace = "aws:elasticbeanstalk:container:docker"
+    name      = "Image"
     value     = var.ecr_image
-  }
+}
 }
