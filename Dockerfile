@@ -16,4 +16,4 @@ COPY app.py .
 EXPOSE 5050
 
 # Step 7: Define the command to start the application
-CMD ["python", "-m", "flask", "run"]
+CMD ["python", "app.py"]
