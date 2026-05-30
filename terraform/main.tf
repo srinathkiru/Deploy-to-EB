@@ -14,21 +14,6 @@ provider "aws" {
 }
 
 
-# -----------------------
-# ECR Repository
-# -----------------------
-
-resource "aws_ecr_repository" "calc" {
-  name = var.ecr_repo_name
-
-  image_scanning_configuration {
-    scan_on_push = true
-  }
-
-  lifecycle {
-    prevent_destroy = false
-  }
-}
 
 # -----------------------
 # IAM for Elastic Beanstalk
