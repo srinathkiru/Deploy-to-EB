@@ -29,5 +29,5 @@ variable "ecr_image" {
 
 variable "eb_platform_arn" {
   type    = string
-  default = "arn:aws:elasticbeanstalk:us-east-1::platform/Docker running on 64bit Amazon Linux 2023/4.13.1"
+  default = "arn:aws:elasticbeanstalk:us-east-1::platform/Docker running on 64bit Amazon Linux 2/3.5.2"
 }

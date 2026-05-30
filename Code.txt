@@ -1,0 +1,350 @@
+Docker File 
+
+FROM python:3.11-slim
+
+# Step 2: Set the working directory inside the container
+WORKDIR /app
+
+# Step 3: Copy the dependencies file to the container
+COPY requirements.txt .
+
+# Step 4: Install the Python packages
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Step 5: Copy the rest of the application code
+COPY app.py .
+
+#0 Step 6: Expose the port the app runs on
+EXPOSE 5050
+
+# Step 7: Define the command to start the application
+CMD ["python", "app.py"]
+
+
+Requirements 
+
+Flask==3.0.2
+
+app.py
+
+from flask import Flask, render_template_string, request, make_response
+
+app = Flask(__name__)
+
+HTML_TEMPLATE = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Docker Calculator version1</title>
+    <style>
+        body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f0f2f5; margin: 0; }
+        .calculator { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 300px; }
+        h2 { text-align: center; color: #333; margin-top: 0; }
+        input, select, button { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 16px; }
+        button { background-color: #007bff; color: white; border: none; cursor: pointer; font-weight: bold; }
+        button:hover { background-color: #0056b3; }
+        .result { font-size: 18px; font-weight: bold; text-align: center; margin-top: 15px; color: #28a745; }
+    </style>
+</head>
+<body>
+    <div class="calculator">
+        <h2>Docker Calculator Version1</h2>
+        <form method="POST">
+            <input type="number" step="any" name="num1" value="{{ num1 }}" placeholder="First Number" required>
+            <select name="operation">
+                <option value="add" {% if operation == 'add' %}selected{% endif %}>+</option>
+                <option value="subtract" {% if operation == 'subtract' %}selected{% endif %}>-</option>
+                <option value="multiply" {% if operation == 'multiply' %}selected{% endif %}>&times;</option>
+                <option value="divide" {% if operation == 'divide' %}selected{% endif %}>&divide;</option>
+            </select>
+            <input type="number" step="any" name="num2" value="{{ num2 }}" placeholder="Second Number" required>
+            <button type="submit">Calculate</button>
+        </form>
+        {% if result is not none %}
+            <div class="result">Result: {{ result }}</div>
+        {% endif %}
+    </div>
+</body>
+</html>
+"""
+
+@app.route('/', methods=['GET', 'POST'])
+def calculate():
+    result = None
+    num1 = ''
+    num2 = ''
+    operation = 'add'
+    
+    if request.method == 'POST':
+        try:
+            num1 = float(request.form['num1'])
+            num2 = float(request.form['num2'])
+            operation = request.form['operation']
+            
+            if operation == 'add':
+                result = num1 + num2
+            elif operation == 'subtract':
+                result = num1 - num2
+            elif operation == 'multiply':
+                result = num1 * num2
+            elif operation == 'divide':
+                result = num1 / num2 if num2 != 0 else "Error (Div by 0)"
+        except ValueError:
+            result = "Invalid Input"
+            
+    # Explicitly forcing HTML response headers
+    response = make_response(render_template_string(HTML_TEMPLATE, result=result, num1=num1, num2=num2, operation=operation))
+    response.headers['Content-Type'] = 'text/html; charset=utf-8'
+    return response
+
+if __name__ == '__main__':
+    import os
+    port = int(os.environ.get("PORT", 5050))
+    app.run(host='0.0.0.0', port=port)
+
+
+
+Terraform 
+
+main.tf
+
+terraform {
+  required_version = ">= 1.5.0"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
+provider "aws" {
+  region = var.aws_region
+}
+
+
+# -----------------------
+# ECR Repository
+# -----------------------
+
+resource "aws_ecr_repository" "calc" {
+  name = var.ecr_repo_name
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+  lifecycle {
+    prevent_destroy = false
+  }
+}
+
+# -----------------------
+# IAM for Elastic Beanstalk
+# -----------------------
+
+# Service role for Elastic Beanstalk
+resource "aws_iam_role" "eb_service_role" {
+  name = "${var.app_name}-eb-service-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = { Service = "elasticbeanstalk.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "eb_service_role_health" {
+  role       = aws_iam_role.eb_service_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkEnhancedHealth"
+}
+
+# Instance role for EC2 in EB environment
+resource "aws_iam_role" "eb_instance_role" {
+  name = "${var.app_name}-eb-ec2-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = { Service = "ec2.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "eb_instance_webtier" {
+  role       = aws_iam_role.eb_instance_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AWSElasticBeanstalkWebTier"
+}
+
+resource "aws_iam_role_policy_attachment" "eb_instance_ecr_readonly" {
+  role       = aws_iam_role.eb_instance_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+}
+
+resource "aws_iam_role_policy_attachment" "eb_instance_ssm_core" {
+  role       = aws_iam_role.eb_instance_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+resource "aws_iam_instance_profile" "eb_instance_profile" {
+  name = "${var.app_name}-eb-instance-profile"
+  role = aws_iam_role.eb_instance_role.name
+}
+
+# -----------------------
+# Elastic Beanstalk App & Env
+# -----------------------
+
+resource "aws_elastic_beanstalk_application" "app" {
+  name        = var.app_name
+  description = "Calculator app running in Docker from ECR"
+}
+
+resource "aws_elastic_beanstalk_environment" "env" {
+  name         = var.env_name
+  application  = aws_elastic_beanstalk_application.app.name
+  platform_arn = var.eb_platform_arn
+
+  # Service role for EB
+  setting {
+    namespace = "aws:elasticbeanstalk:environment"
+    name      = "ServiceRole"
+    value     = aws_iam_role.eb_service_role.arn
+  }
+
+  # Instance profile for EC2
+  setting {
+    namespace = "aws:autoscaling:launchconfiguration"
+    name      = "IamInstanceProfile"
+    value     = aws_iam_instance_profile.eb_instance_profile.name
+  }
+
+  # AL2023 Docker: pass image via IMAGE_URI env var
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "ImageUri"
+    value     = var.ecr_image
+  }
+}
+
+
+variables.tf
+
+# -----------------------
+# Variables
+# -----------------------
+
+variable "aws_region" {
+  type        = string
+  default     = "us-east-1"
+}
+
+variable "app_name" {
+  type        = string
+  default     = "calculator-app"
+}
+
+variable "env_name" {
+  type        = string
+  default     = "calculator-env"
+}
+
+variable "ecr_repo_name" {
+  type        = string
+  default     = "calculator"
+}
+
+variable "ecr_image" {
+  type        = string
+  description = "Full ECR image URI with tag (set by Jenkins)"
+}
+
+variable "eb_platform_arn" {
+  type    = string
+  default = "arn:aws:elasticbeanstalk:us-east-1::platform/Docker running on 64bit Amazon Linux 2023/4.13.1"
+}
+
+
+options.json
+
+{
+  "containerPort": 5050
+}
+
+
+
+Jenkins Code
+
+pipeline {
+    agent any
+
+    environment {
+        AWS_REGION     = "us-east-1"
+        AWS_ACCOUNT_ID = "315522393526"
+
+        ECR_REPO      = "calculator"
+        ECR_REGISTRY  = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+
+        IMAGE_TAG     = "${BUILD_NUMBER}"
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                git branch: 'main',
+                    url: 'https://github.com/srinathkiru/docker-eb-calc.git'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                bat "docker build -t %ECR_REGISTRY%/%ECR_REPO%:%IMAGE_TAG% ."
+            }
+        }
+
+        stage('ECR Login') {
+            steps {
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding',
+                                  credentialsId: 'aws-creds']]) {
+                    bat "aws ecr get-login-password --region %AWS_REGION% | docker login --username AWS --password-stdin %ECR_REGISTRY%"
+                }
+            }
+        }
+
+        stage('Push Image') {
+            steps {
+                bat "docker push %ECR_REGISTRY%/%ECR_REPO%:%IMAGE_TAG%"
+            }
+        }
+        
+stage('Terraform Init') {
+    steps {
+        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
+            bat """
+            cd terraform
+            terraform init -upgrade
+            """
+        }
+    }
+}
+        stage('Terraform Apply') {
+            steps {
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding',
+                                  credentialsId: 'aws-creds']]) {
+                    bat "cd terraform && terraform apply -auto-approve -var=\"ecr_image=%ECR_REGISTRY%/%ECR_REPO%:%IMAGE_TAG%\""
+                }
+            }
+        }
+    }
+}
+
+
+
+
