@@ -24,7 +24,7 @@ variable "ecr_repo_name" {
 
 variable "ecr_image" {
   type        = string
-  description = ""
+  default = ""
 }
 
 variable "eb_platform_arn" {
