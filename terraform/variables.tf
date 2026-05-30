@@ -24,7 +24,7 @@ variable "ecr_repo_name" {
 
 variable "ecr_image" {
   type        = string
-  description = "Full ECR image URI with tag (set by Jenkins)"
+  description = ""
 }
 
 variable "eb_platform_arn" {
