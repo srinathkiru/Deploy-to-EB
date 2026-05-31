@@ -13,8 +13,6 @@ provider "aws" {
   region = var.aws_region
 }
 
-
-
 # -----------------------
 # IAM for Elastic Beanstalk
 # -----------------------
