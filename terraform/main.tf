@@ -144,4 +144,51 @@ setting {
   name      = "ProxyServer"
   value     = "nginx"
 }
+
+  version_label = aws_elastic_beanstalk_application_version.app_version.name
+}
+
+# -----------------------
+# S3 bucket for EB app bundle
+# -----------------------
+
+resource "aws_s3_bucket" "eb_bucket" {
+  bucket        = "${var.app_name}-eb-versions-${var.aws_region}"
+  force_destroy = true
+}
+
+# -----------------------
+# Dockerrun.aws.json with injected image URI
+# -----------------------
+
+resource "aws_s3_object" "dockerrun" {
+  bucket = aws_s3_bucket.eb_bucket.id
+  key    = "Dockerrun-${var.ecr_image == "placeholder" ? "placeholder" : replace(var.ecr_image, "/", "_")}.json"
+
+  content = jsonencode({
+    AWSEBDockerrunVersion = "1"
+    Image = {
+      Name   = var.ecr_image
+      Update = "true"
+    }
+    Ports = [
+      {
+        ContainerPort = 8000
+        HostPort      = 80
+      }
+    ]
+  })
+
+  content_type = "application/json"
+}
+
+# -----------------------
+# EB Application Version
+# -----------------------
+
+resource "aws_elastic_beanstalk_application_version" "app_version" {
+  name        = "v-${replace(var.ecr_image, "/", "-")}"
+  application = aws_elastic_beanstalk_application.app.name
+  bucket      = aws_s3_bucket.eb_bucket.id
+  key         = aws_s3_object.dockerrun.id
 }
