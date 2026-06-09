@@ -131,6 +131,17 @@ resource "aws_elastic_beanstalk_environment" "env" {
     value     = aws_iam_instance_profile.eb_instance_profile.name
   }
 
-  # AL2023 Docker: pass image via IMAGE_URI env var
+  # Setting Port for reverse proxy to 5050
   
+  setting {
+  namespace = "aws:elasticbeanstalk:application:environment"
+  name      = "PORT"
+  value     = "5050"
+}
+
+setting {
+  namespace = "aws:elasticbeanstalk:environment:proxy"
+  name      = "ProxyServer"
+  value     = "nginx"
+}
 }
