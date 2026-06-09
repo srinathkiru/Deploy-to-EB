@@ -25,9 +25,10 @@ variable "ecr_repo_name" {
 variable "ecr_image" {
   type        = string
   description     = "Full ECR image URI with tag (set by Jenkins)"
+  default     = "placeholder" 
 }
 
 variable "eb_platform_arn" {
   type    = string
-  default = "arn:aws:elasticbeanstalk:us-east-1::platform/Docker running on 64bit Amazon Linux 2/3.5.2"
+  default = "arn:aws:elasticbeanstalk:us-east-1::platform/Docker/1.3.2"
 }

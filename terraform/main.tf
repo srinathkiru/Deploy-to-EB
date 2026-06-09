@@ -13,6 +13,17 @@ provider "aws" {
   region = var.aws_region
 }
 
+#Create ECR Repository
+
+resource "aws_ecr_repository" "calculator" {
+  name                 = var.ecr_repo_name
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+}
+
 # -----------------------
 # IAM for Elastic Beanstalk
 # -----------------------
@@ -34,6 +45,11 @@ resource "aws_iam_role" "eb_service_role" {
 resource "aws_iam_role_policy_attachment" "eb_service_role_health" {
   role       = aws_iam_role.eb_service_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkEnhancedHealth"
+}
+
+resource "aws_iam_role_policy_attachment" "eb_service_role_managed_updates" {
+  role       = aws_iam_role.eb_service_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AWSElasticBeanstalkManagedUpdatesCustomerRolePolicy"
 }
 
 # Instance role for EC2 in EB environment
@@ -103,5 +119,5 @@ resource "aws_elastic_beanstalk_environment" "env" {
     namespace = "aws:elasticbeanstalk:container:docker"
     name      = "Image"
     value     = var.ecr_image
-}
+  }
 }
