@@ -25,12 +25,12 @@ output "eb_application_name" {
 
 output "ecr_repository_url" {
   description = "ECR repository URL (use this to build & push Docker images)"
-  value       = aws_ecr_repository.calculator.repository_url
+  value = data.aws_ecr_repository.calculator.repository_url
 }
 
 output "ecr_repository_arn" {
   description = "ARN of the ECR repository"
-  value       = aws_ecr_repository.calculator.arn
+  value       = data.aws_ecr_repository.calculator.arn
 }
 
 output "eb_instance_profile_name" {

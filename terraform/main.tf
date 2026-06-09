@@ -15,13 +15,8 @@ provider "aws" {
 
 #Create ECR Repository
 
-resource "aws_ecr_repository" "calculator" {
-  name                 = var.ecr_repo_name
-  image_tag_mutability = "MUTABLE"
-
-  image_scanning_configuration {
-    scan_on_push = true
-  }
+data "aws_ecr_repository" "calculator" {
+  name = var.ecr_repo_name
 }
 
 # -----------------------
