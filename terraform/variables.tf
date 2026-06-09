@@ -30,5 +30,5 @@ variable "ecr_image" {
 
 variable "eb_platform_arn" {
   type    = string
-  default = "64bit Amazon Linux 2023 v4.7.1 running Docker"
+  default = "64bit Amazon Linux 2023 v4.13.1 running Docker"
 }
