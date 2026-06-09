@@ -98,7 +98,7 @@ resource "aws_elastic_beanstalk_application" "app" {
 resource "aws_elastic_beanstalk_environment" "env" {
   name         = var.env_name
   application  = aws_elastic_beanstalk_application.app.name
-  platform_arn = var.eb_platform_arn
+  solution_stack_name = var.eb_platform_arn
 
   # Service role for EB
   setting {
